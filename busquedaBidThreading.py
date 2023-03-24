@@ -1,13 +1,22 @@
 #from queue import Queue
-from threading import Barrier as barr
+import sys 
+from threading import Barrier as barr, Lock
 import threading
 import random
 COLA_INICIAL = {}
 COLA_FINAL = {}
+CHECK = False
+lock = threading.Lock()
 
 
-def crear_grafo(lista):
-    largo = len(lista)
+def crearPuzzle(tamañoMatriz):
+    puzzleInicial = []
+    for i in range(0, tamañoMatriz-1):
+        puzzleInicial.append(i+1)
+    puzzleInicial.append(0)
+    return puzzleInicial
+
+def crear_grafo(largo):
     grafo = {}
     for i in range(0, largo):
         grafo[i] = []
@@ -16,14 +25,14 @@ def crear_grafo(lista):
         for j in range(columnas):
             indice = i * columnas + j
             if i > 0:
-                grafo[indice].append((i - 1) * columnas + j)  # agrega el vecino de arriba
+                grafo[indice].append((i - 1) * columnas + j)  
             if i < filas - 1:
-                grafo[indice].append((i + 1) * columnas + j)  # agrega el vecino de abajo
+                grafo[indice].append((i + 1) * columnas + j)  
             if j > 0:
-                grafo[indice].append(i * columnas + (j - 1))  # agrega el vecino de la izquierda
+                grafo[indice].append(i * columnas + (j - 1))  
             if j < columnas - 1:
-                grafo[indice].append(i * columnas + (j + 1))  # agrega el vecino de la derecha
-            grafo[indice].sort()  # ordena la lista de vecinos
+                grafo[indice].append(i * columnas + (j + 1))  
+            grafo[indice].sort() 
     return grafo
 
 def crear_random(grafo, puzzle):
@@ -46,67 +55,58 @@ def crear_random(grafo, puzzle):
     return diccionarioAnchura.get(list(diccionarioAnchura.keys())[-1])
 
 def busquedaBid(cola, grafo, bar):
+    global CHECK
     tomarLista = 0
     contadorSoluciones = 0
     while True:
-        while True:
-            bar.wait()
-            nodo1 = cola.get(tomarLista).index(0)
-            for neighbour in grafo[nodo1]:
-                listaAux = cola.get(tomarLista).copy()
-                valorAux = listaAux[neighbour]
-                indCero = listaAux.index(0)
-                listaAux[neighbour] = 0
-                listaAux[indCero] = valorAux
-                if listaAux not in cola.values(): #no guardar valores que ya esten
-                    contadorSoluciones+=1
-                    cola[contadorSoluciones]=listaAux
-            tomarLista += 1
-            bar.wait()
-            valCheck = check()
-            if valCheck is True:
-                break
-        break
+        bar.wait()
+        nodo1 = cola.get(tomarLista).index(0)
+        for neighbour in grafo[nodo1]:
+            listaAux = cola.get(tomarLista).copy()
+            valorAux = listaAux[neighbour]
+            indCero = listaAux.index(0)
+            listaAux[neighbour] = 0
+            listaAux[indCero] = valorAux
+            if listaAux not in cola.values(): #no guardar valores que ya esten
+                contadorSoluciones+=1
+                cola[contadorSoluciones]=listaAux
+        tomarLista += 1
+        bar.wait()
+        check()
+        if CHECK:
+            break
+        #check()
         
-
+        
+        
 def check():
-    global COLA_INICIAL, COLA_FINAL
-    for k1,v1 in COLA_INICIAL.items():
-        for k2,v2 in COLA_FINAL.items():
-            if v1 == v2 and k1 != 0 and k2 != 0:
-                print('Coinciden!')
-                print('Valor: ', v1, ', Nodo de la lista inicial: ', k1, ', Nodo de la lista final: ', k2)
-                return True
+    global COLA_INICIAL, COLA_FINAL, CHECK
+    with lock:
+        for k1,v1 in COLA_INICIAL.items():
+            for k2,v2 in COLA_FINAL.items():
+                if v1 == v2 and k1 != 0 and k2 != 0 and CHECK is False:
+                        print('Coinciden!')
+                        print('Valor: ', v1, ', Nodo de la lista inicial: ', k1, ', Nodo de la lista final: ', k2)
+                        CHECK = True
+                        return
 
 def main():
-    global COLA_INICIAL, COLA_FINAL
+    global COLA_INICIAL, COLA_FINAL, CHECK
     threadsList = []
-    puzzleInicial = [1,2,3,4,5,6,7,8,0]
-    grafo = crear_grafo(puzzleInicial)
+    tamañoMatriz = int(input('Indica tamaño de la matriz: '))**2
+    puzzleInicial = crearPuzzle(tamañoMatriz)
+    grafo = crear_grafo(len(puzzleInicial))
     puzzleFinal = crear_random(grafo, puzzleInicial)
     COLA_INICIAL = {0:puzzleInicial}
     COLA_FINAL = {0:puzzleFinal}
     colas = [COLA_INICIAL, COLA_FINAL]
-    bar = barr(2)
+    bar1 = barr(2)
     for cola in colas:
-        threads = threading.Thread(target=busquedaBid, args=(cola, grafo, bar))
+        threads = threading.Thread(target=busquedaBid, args=(cola, grafo, bar1))
         threadsList.append(threads)
-    for thread in threadsList:
-        if thread.is_alive() is False:
-            thread.start()
-        """bar.wait()
-        for k1,v1 in cola_inicial.items():
-            for k2,v2 in cola_final.items():
-                if v1 == v2 and k1 != 0 and k2 != 0:
-                    print('Coinciden!')
-                    print('Valor: ', v1, ', Nodo de la lista inicial: ', k1, ', Nodo de la lista final: ', k2)
-                    break
-        bar.wait()
-        break"""
+        threadsList[-1].start()
     for thread in threadsList:
         thread.join()
-    print('x')
-
 
 
 if __name__ == '__main__':
