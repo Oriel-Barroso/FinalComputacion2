@@ -8,9 +8,8 @@ import redis
 
 def getValues():
     redisDB = redis.Redis(host='localhost', port=6379, db=0)
-    values = redisDB.mget(['protocolo', 'asincronia', 'puerto',
-                           'direction'])
-    values = [x.decode().lower() for x in values]
+    values = redisDB.mget(['user', 'parametros'])
+    value
     return values
 
 
