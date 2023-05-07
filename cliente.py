@@ -1,65 +1,59 @@
-import sys, argparse, socket, redis, time
+import sys
+import argparse
+import redis
+import socket
+import socketserver
+import time
+import ast
 
 
-def udp_protocol(ip, port):
+def udp_protocol(ip, port, tamaño):
+    print('Conexion UDP')
     c_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    print('linea escrita:', line)
-    c_sock.sendto(line.encode(), (ip, port))
+    c_sock.sendto(str(tamaño).encode(), (ip, port))
     print('Texto enviado')
+    rcv = str(c_sock.recv(1024), "utf-8")
+    print("El resultado es: ", rcv)
     c_sock.close()
 
 
 def tcp_protocol(ip, port, tamaño):
-    c_sock = socket.socket()
+    c_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print(type(ip), type(port))
     c_sock.connect((ip, port))
-    c_sock.send(tamaño.encode(str(tamaño)))
-    res = c_sock.recv(1024).decode()
+    c_sock.send(str(tamaño).encode())
+    res = str(c_sock.recv(1024), "utf-8")
     print('El resultado es: ', res)
     c_sock.close()
 
 
-def convetirLista(args):
-    return [args.ipdirection, args.port, args.tprotocol, args.asincrony]
-
-
-def agregarUsuario(db, usuario):
-    usuarios = [usuarioInlista.decode() for usuarioInlista in
-                list(db.smembers('Usuarios'))]  # Ver si el usuario ya existe
-    if usuario not in usuarios:
-        db.sadd("Usuarios", usuario)
-        return True
-    return False
+def getValues(identificacion):
+    redisDB = redis.Redis(host='localhost', port=6379, db=0)
+    try:
+        return ast.literal_eval(redisDB.get(identificacion).decode())
+    except Exception:
+        print("Error redis. Su usuario se encuentra registrado?")
+        sys.exit()
 
 
 def main():
-    redisDB = redis.Redis(host='localhost', port=6379, db=0)
-    parse = argparse.ArgumentParser('Cliente')
-    parse.add_argument('-id', '--identificacion', help='Indique su'
-                       ' nombre', type=str, action='store',
-                       required=True)
-    parse.add_argument('-i', '--ipdirection', help='Indique la direccion IP',
-                       required=True, type=str, action='store',
-                       default='localhost')
-    parse.add_argument('-ps', '--port', help='Indique el puerto para comunicarte con el servidor',
-                       required=True, type=int, action='store')
-    parse.add_argument('-t', '--tprotocol', help='Indique el protocolo. process para procesos, y thread para hilo', required=True,
-                       type=str, action='store')
-    parse.add_argument('-thp', '--asincrony', help='Indique si quiere utilizar procesos para la generacion del server',
-                       type=str, action='store')
-    parse.add_argument('-tam', '--tamaño', help='Indique el tamaño de la matriz: 3,4,5... . (default 3x3)',
-                       type=int, action='store')
-    args = parse.parse_args()
+    socketserver.TCPServer.allow_reuse_address = True
+    socketserver.UDPServer.allow_reuse_address = True
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-id', '--identificacion', help='Provee tu nombre'
+                        ' de usuario', type=str, required=True)
+    parser.add_argument('-tam', '--tamaño', help='Indique el tamaño de la'
+                        ' matriz: 3,4,5... . (default 3x3)', type=int,
+                        action='store')
+    args = parser.parse_args()
     print('Procesando argumentos...')
     time.sleep(1)
-    if agregarUsuario(redisDB, args.identificacion) is False:
-        print('El usuario ya existe, abortando...')
-        sys.exit()
-    listaArgs = convetirLista(args)
-    redisDB.set('parametros', listaArgs)
-    if args.tprotocol.lower() == 'udp':
-        udp_protocol(args.aipdirection, args.port, args.tamaño)
-    elif args.tprotocol.lower() == 'tcp':
-        tcp_protocol(args.aipdirection, args.port, args.tamaño)
+    redisValues = getValues(args.identificacion)
+    ip, puerto, protocolo = redisValues[0], redisValues[1], redisValues[2]
+    if protocolo.lower() == 'udp':
+        udp_protocol(ip, puerto, args.tamaño)
+    elif protocolo.lower() == 'tcp':
+        tcp_protocol(ip, puerto, args.tamaño)
     else:
         print('Error')
 
