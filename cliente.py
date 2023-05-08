@@ -7,23 +7,41 @@ import time
 import ast
 
 
-def udp_protocol(ip, port, tamaño):
+def udp_protocol(ip, port):
     print('Conexion UDP')
     c_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    c_sock.sendto(str(tamaño).encode(), (ip, port))
-    print('Texto enviado')
-    rcv = str(c_sock.recv(1024), "utf-8")
-    print("El resultado es: ", rcv)
+    print('Introduzca un tamaño de matriz mayor a 2')
+    while True:
+        try:
+            tamaño = 0
+            while tamaño < 3:
+                tamaño = int(input('Tamaño matriz: '))
+            c_sock.sendto(str(tamaño).encode(), (ip, port))
+            print('Texto enviado')
+            rcv = str(c_sock.recv(1024), "utf-8")
+            print("El resultado es: ", rcv)
+        except EOFError as e:
+            print(e)
+            break
     c_sock.close()
 
 
-def tcp_protocol(ip, port, tamaño):
+def tcp_protocol(ip, port):
+    print('Conexion TCP')
     c_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print(type(ip), type(port))
     c_sock.connect((ip, port))
-    c_sock.send(str(tamaño).encode())
-    res = str(c_sock.recv(1024), "utf-8")
-    print('El resultado es: ', res)
+    print('Introduzca un tamaño de matriz mayor a 2')
+    while True:
+        try:
+            tamaño = 0
+            while tamaño < 3:
+                tamaño = int(input('Tamaño matriz: '))
+            c_sock.send(str(tamaño).encode())
+            res = str(c_sock.recv(1024), "utf-8")
+            print('El resultado es: ', res)
+        except EOFError as e:
+            print(e)
+            break
     c_sock.close()
 
 
@@ -42,18 +60,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-id', '--identificacion', help='Provee tu nombre'
                         ' de usuario', type=str, required=True)
-    parser.add_argument('-tam', '--tamaño', help='Indique el tamaño de la'
-                        ' matriz: 3,4,5... . (default 3x3)', type=int,
-                        action='store')
     args = parser.parse_args()
     print('Procesando argumentos...')
     time.sleep(1)
     redisValues = getValues(args.identificacion)
     ip, puerto, protocolo = redisValues[0], redisValues[1], redisValues[2]
     if protocolo.lower() == 'udp':
-        udp_protocol(ip, puerto, args.tamaño)
+        udp_protocol(ip, puerto)
     elif protocolo.lower() == 'tcp':
-        tcp_protocol(ip, puerto, args.tamaño)
+        tcp_protocol(ip, puerto)
     else:
         print('Error')
 

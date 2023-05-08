@@ -5,7 +5,6 @@ from tcpHandler import ForkedTCPServer, ThreadedTCPServer, MyTCPHandler
 from udpHandler import ForkedUDPHandler, ThreadedUDPHandler, MyUDPHandler
 import redis
 import argparse
-import time
 
 
 def convetirLista(args):
@@ -38,7 +37,6 @@ if __name__ == "__main__":
                        type=str, action='store')
     args = parse.parse_args()
     print('Procesando argumentos...')
-    time.sleep(1)
     agregarUsuario(redisDB, args.identificacion)
     listaArgs = convetirLista(args)
     redisDB.set(args.identificacion, str(listaArgs))
@@ -48,8 +46,7 @@ if __name__ == "__main__":
         if args.procesamiento == 'process':
             with ForkedTCPServer((args.ipdireccion, args.puerto), MyTCPHandler) as server:
                 print('hello world from processing')
-                server_fork = multiprocessing.Process(target=server.
-                                                      serve_forever())
+                server_fork = multiprocessing.Process(target=server.serve_forever())
                 server_fork.daemon = True
                 server_fork.start()
         if args.procesamiento == 'thread':
@@ -66,7 +63,7 @@ if __name__ == "__main__":
             server_fork.daemon = True
             server_fork.start()
     if args.procesamiento == 'thread':
-        with ThreadedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandle) as server:
+        with ThreadedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
             print('hello world from threading')
             server_thread = threading.Thread(target=server.serve_forever())
             server_thread.daemon = True

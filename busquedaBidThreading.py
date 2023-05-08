@@ -14,12 +14,12 @@ class BusquedaBidireccional():
         self.grafo = {}
         self.puzzleInicial = []
         self.puzzleFinal = []
+        self.resultado = ''
 
     def __str__(self):
         print('El valor del tamaño es: ', self.tamañoMatriz)
 
     def crearPuzzle(self):
-        print(67867869786786786786786)
         for i in range(0, self.tamañoMatriz-1):
             self.puzzleInicial.append(i+1)
         self.puzzleInicial.append(0)
@@ -46,7 +46,6 @@ class BusquedaBidireccional():
         contadorSoluciones = 0
         diccionarioAnchura = {0: puzzle.copy()}
         random_val = random.randint(5, 100)
-        print('El valor random es: ', random_val)
         while tomarLista != random_val:
             nodo = diccionarioAnchura.get(tomarLista).index(0)
             for neighbour in self.grafo[nodo]:
@@ -83,22 +82,19 @@ class BusquedaBidireccional():
             if CHECK:
                 break
 
-    def check():
+    def check(self):
         global COLA_INICIAL, COLA_FINAL, CHECK
         with lock:
             if CHECK is False:
                 for k1, v1 in COLA_INICIAL.items():
                     for k2, v2 in COLA_FINAL.items():
                         if v1 == v2:
-                            print('Coinciden!')
-                            print('Valor: ', v1, 'Nodo de la lista inicial: ',
-                                  k1, ', Nodo de la lista final: ', k2)
+                            self.resultado = 'Coinciden!, Valor: ', v1, 'Nodo de la lista inicial: ', k1, ', Nodo de la lista final: ', k2
                             CHECK = True
                             return
 
     def run(self):
         global COLA_INICIAL, COLA_FINAL, CHECK
-        print(6876676)
         self.crearPuzzle()
         self.crear_grafo(len(self.puzzleInicial))
         self.crear_random(self.puzzleInicial)
@@ -114,3 +110,4 @@ class BusquedaBidireccional():
             threadsList[-1].start()
         for thread in threadsList:
             thread.join()
+        return self.resultado
