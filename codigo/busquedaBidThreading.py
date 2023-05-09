@@ -17,14 +17,15 @@ class BusquedaBidireccional():
         self.resultado = ''
 
     def __str__(self):
-        print('El valor del tamaño es: ', self.tamañoMatriz)
+        print('El valor del tamaño de matriz es: ', self.tamañoMatriz)
 
     def crearPuzzle(self):
         for i in range(0, self.tamañoMatriz-1):
             self.puzzleInicial.append(i+1)
         self.puzzleInicial.append(0)
 
-    def crear_grafo(self, largo):
+    def crear_grafo(self):
+        largo = len(self.puzzleInicial)
         for i in range(0, largo):
             self.grafo[i] = []
         filas, columnas = int(largo ** 0.5), int(largo ** 0.5)
@@ -41,10 +42,10 @@ class BusquedaBidireccional():
                     self.grafo[indice].append(i * columnas + (j + 1))
                 self.grafo[indice].sort()
 
-    def crear_random(self, puzzle):
+    def crear_random(self):
         tomarLista = 0
         contadorSoluciones = 0
-        diccionarioAnchura = {0: puzzle.copy()}
+        diccionarioAnchura = {0: self.puzzleInicial.copy()}
         random_val = random.randint(5, 100)
         while tomarLista != random_val:
             nodo = diccionarioAnchura.get(tomarLista).index(0)
@@ -96,8 +97,8 @@ class BusquedaBidireccional():
     def run(self):
         global COLA_INICIAL, COLA_FINAL, CHECK
         self.crearPuzzle()
-        self.crear_grafo(len(self.puzzleInicial))
-        self.crear_random(self.puzzleInicial)
+        self.crear_grafo()
+        self.crear_random()
         COLA_INICIAL = {0: self.puzzleInicial}
         COLA_FINAL = {0: self.puzzleFinal}
         colas = [COLA_INICIAL, COLA_FINAL]

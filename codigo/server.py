@@ -1,3 +1,4 @@
+import sys
 import socketserver
 import threading
 import multiprocessing
@@ -39,11 +40,14 @@ if __name__ == "__main__":
     print('Procesando argumentos...')
     agregarUsuario(redisDB, args.identificacion)
     listaArgs = convetirLista(args)
+    if len(listaArgs) != 3 or args.procesamiento == '' or args.identifacion == '':
+        print('Error. Falta de argumentos. Abortando...')
+        sys.exit()
     redisDB.set(args.identificacion, str(listaArgs))
     socketserver.TCPServer.allow_reuse_address = True
     socketserver.UDPServer.allow_reuse_address = True
-    if args.protocolo == 'tcp':
-        if args.procesamiento == 'process':
+    if args.protocolo.lower() == 'tcp':
+        if args.procesamiento.lower() == 'process':
             with ForkedTCPServer((args.ipdireccion, args.puerto), MyTCPHandler) as server:
                 print('hello world from processing')
                 server_fork = multiprocessing.Process(target=server.serve_forever())
@@ -55,16 +59,18 @@ if __name__ == "__main__":
                 server_thread = threading.Thread(target=server.serve_forever())
                 server_thread.daemon = True
                 server_thread.start()
-    # UDP
-    if args.procesamiento == 'process':
-        with ForkedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
-            print('hello world from processing')
-            server_fork = multiprocessing.Process(target=server.serve_forever())
-            server_fork.daemon = True
-            server_fork.start()
-    if args.procesamiento == 'thread':
-        with ThreadedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
-            print('hello world from threading')
-            server_thread = threading.Thread(target=server.serve_forever())
-            server_thread.daemon = True
-            server_thread.start()
+    elif args.protocolo.lower() == 'udp':
+        if args.procesamiento.lower() == 'process':
+            with ForkedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
+                print('hello world from processing')
+                server_fork = multiprocessing.Process(target=server.serve_forever())
+                server_fork.daemon = True
+                server_fork.start()
+        if args.procesamiento.lower() == 'thread':
+            with ThreadedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
+                print('hello world from threading')
+                server_thread = threading.Thread(target=server.serve_forever())
+                server_thread.daemon = True
+                server_thread.start()
+    else:
+        print('Error de argumentos')
