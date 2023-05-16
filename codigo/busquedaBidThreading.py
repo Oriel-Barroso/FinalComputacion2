@@ -8,13 +8,14 @@ CHECK = False
 lock = Lock()
 
 
-class BusquedaBidireccional():
+class BusquedaBidireccionalThread():
     def __init__(self, tamañoMatriz):
         self.tamañoMatriz = tamañoMatriz**2
         self.grafo = {}
         self.puzzleInicial = []
         self.puzzleFinal = []
         self.resultado = ''
+        self.checkD = False
 
     def __str__(self):
         print('El valor del tamaño de matriz es: ', self.tamañoMatriz)
@@ -80,7 +81,7 @@ class BusquedaBidireccional():
             tomarLista += 1
             bar.wait()
             self.check()
-            if CHECK:
+            if self.checkD:
                 break
 
     def check(self):
@@ -91,11 +92,15 @@ class BusquedaBidireccional():
                     for k2, v2 in COLA_FINAL.items():
                         if v1 == v2:
                             self.resultado = 'Coinciden!, Valor: ', v1, 'Nodo de la lista inicial: ', k1, ', Nodo de la lista final: ', k2
-                            CHECK = True
+                            self.checkD = True
                             return
 
     def run(self):
         global COLA_INICIAL, COLA_FINAL, CHECK
+        # self.puzzleInicial = [1,2,3,4,5,6,7,8,0]
+        # self.puzzleFinal = [1,2,3,4,0,6,7,5,8]
+        # self.crear_grafo()
+        # print(self.grafo)
         self.crearPuzzle()
         self.crear_grafo()
         self.crear_random()
@@ -111,4 +116,9 @@ class BusquedaBidireccional():
             threadsList[-1].start()
         for thread in threadsList:
             thread.join()
+        #print(COLA_INICIAL, COLA_FINAL)
         return self.resultado
+
+# if __name__ == "__main__":
+#     s = BusquedaBidireccionalThread(3)
+#     print(s.run())

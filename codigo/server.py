@@ -1,76 +1,84 @@
-import sys
 import socketserver
 import threading
 import multiprocessing
-from tcpHandler import ForkedTCPServer, ThreadedTCPServer, MyTCPHandler
-from udpHandler import ForkedUDPHandler, ThreadedUDPHandler, MyUDPHandler
-import redis
+from tcpHandler import MyTCPThreadV4Handler, MyTCPThreadV6Handler, MyForkedTCPV6Server, MyForkedTCPV4Server, MyTCPHandler
+from udpHandler import MyForkedUDPV6Server, MyForkedUDPV4Server, MyUDPServerThreadV6Handler, MyUDPServerThreadV4Handler, MyUDPHandler
 import argparse
+import redis
+import sys
 
 
-def convetirLista(args):
-    return [args.ipdireccion, args.puerto, args.protocolo]
+def getValues(identificacion):
+    try:
+        redisDB = redis.Redis(host='localhost', port=6379, db=0)
+        dictValues = {}
+        for k, v in redisDB.hgetall(identificacion.capitalize()).items():
+            try:
+                dictValues[k.decode()] = int(v.decode())
+            except:
+                dictValues[k.decode()] = v.decode()
+        if len(dictValues.keys()) != 0:
+            return dictValues
+        else:
+            print(f"Error redis. Su usuario se encuentra registrado?")
+            sys.exit()
+    except Exception as error:
+        print(f'Error: {error}')
+        sys.exit()
 
 
-def agregarUsuario(db, usuario):
-    usuarios = [usuarioInlista.decode() for usuarioInlista in
-                list(db.smembers('Usuarios'))]
-    if usuario not in usuarios:  # Ver si el usuario ya existe
-        db.sadd("Usuarios", usuario)
+def executeServer(ejecucion, server):
+    if ejecucion == 'process':
+        server = multiprocessing.Process(target=server.serve_forever())
+    else:
+        server = threading.Thread(target=server.serve_forever())
+    server.daemon = True
+    server.start()
+
 
 
 if __name__ == "__main__":
     parse = argparse.ArgumentParser()
-    redisDB = redis.Redis(host='localhost', port=6379, db=0)
     parse.add_argument('-id', '--identificacion', help='Indique su'
                        ' nombre', type=str, action='store',
                        required=True)
-    parse.add_argument('-i', '--ipdireccion', help='Indique la direccion IP',
-                       type=str, action='store', default="localhost")
-    parse.add_argument('-ps', '--puerto', help='Indique el puerto para'
-                       'comunicarte con el servidor',
-                       required=True, type=int, action='store')
-    parse.add_argument('-t', '--protocolo', help='Indique el protocolo.'
-                       'process para procesos, y thread para hilo',
-                       required=True, type=str, action='store')
-    parse.add_argument('-thp', '--procesamiento', help='Indique si quiere utilizar'
-                       ' procesos para la generacion del server',
-                       type=str, action='store')
     args = parse.parse_args()
+    dictValues = getValues(args.identificacion)
     print('Procesando argumentos...')
-    agregarUsuario(redisDB, args.identificacion)
-    listaArgs = convetirLista(args)
-    if len(listaArgs) != 3 or args.procesamiento == '' or args.identifacion == '':
-        print('Error. Falta de argumentos. Abortando...')
-        sys.exit()
-    redisDB.set(args.identificacion, str(listaArgs))
     socketserver.TCPServer.allow_reuse_address = True
     socketserver.UDPServer.allow_reuse_address = True
-    if args.protocolo.lower() == 'tcp':
-        if args.procesamiento.lower() == 'process':
-            with ForkedTCPServer((args.ipdireccion, args.puerto), MyTCPHandler) as server:
+    if dictValues['ip'] == 'ipv6' and dictValues['protocolo'].lower() == 'tcp' and dictValues['proceso'].lower() == 'thread':
+        handlerClass = MyTCPThreadV6Handler
+    elif dictValues['ip'] == 'ipv4' and dictValues['protocolo'].lower() == 'tcp' and dictValues['proceso'].lower() == 'thread':
+        handlerClass = MyTCPThreadV4Handler
+    elif dictValues['ip'] == 'ipv6' and dictValues['protocolo'].lower() == 'tcp' and dictValues['proceso'].lower() == 'process':
+        handlerClass = MyForkedTCPV6Server
+    elif dictValues['ip'] == 'ipv4' and dictValues['protocolo'].lower() == 'tcp' and dictValues['proceso'].lower() == 'process':
+        handlerClass = MyForkedTCPV4Server
+    elif dictValues['ip'] == 'ipv6' and dictValues['protocolo'].lower() == 'udp' and dictValues['proceso'].lower() == 'thread':
+        handlerClass = MyUDPServerThreadV6Handler
+    elif dictValues['ip'] == 'ipv4' and dictValues['protocolo'].lower() == 'udp' and dictValues['proceso'].lower() == 'thread':
+        handlerClass = MyUDPServerThreadV4Handler
+    elif dictValues['ip'] == 'ipv6' and dictValues['protocolo'].lower() == 'udp' and dictValues['proceso'].lower() == 'process':
+        handlerClass = MyForkedUDPV6Server
+    elif dictValues['ip'] == 'ipv4' and dictValues['protocolo'].lower() == 'udp' and dictValues['proceso'].lower() == 'process':
+        handlerClass = MyForkedUDPV4Server
+    print(handlerClass)
+    if dictValues['protocolo'].lower() == 'tcp':
+        if dictValues['proceso'].lower() == 'process':
+            with handlerClass((dictValues['host'], dictValues['puerto']), MyTCPHandler) as server:
                 print('hello world from processing')
-                server_fork = multiprocessing.Process(target=server.serve_forever())
-                server_fork.daemon = True
-                server_fork.start()
-        if args.procesamiento == 'thread':
-            with ThreadedTCPServer((args.ipdireccion, args.puerto), MyTCPHandler) as server:
+                executeServer(dictValues['proceso'].lower(), server)
+        if dictValues['proceso'] == 'thread':
+            with handlerClass((dictValues['host'], dictValues['puerto']), MyTCPHandler) as server:
                 print('hello world from threading')
-                server_thread = threading.Thread(target=server.serve_forever())
-                server_thread.daemon = True
-                server_thread.start()
-    elif args.protocolo.lower() == 'udp':
-        if args.procesamiento.lower() == 'process':
-            with ForkedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
+                executeServer(dictValues['proceso'].lower(), server)
+    elif dictValues['protocolo'].lower() == 'udp':
+        if dictValues['proceso'].lower() == 'process':
+            with handlerClass((dictValues['host'], dictValues['puerto']), MyUDPHandler) as server:
                 print('hello world from processing')
-                server_fork = multiprocessing.Process(target=server.serve_forever())
-                server_fork.daemon = True
-                server_fork.start()
-        if args.procesamiento.lower() == 'thread':
-            with ThreadedUDPHandler((args.ipdireccion, args.puerto), MyUDPHandler) as server:
+                executeServer(dictValues['proceso'].lower(), server)
+        if dictValues['proceso'].lower() == 'thread':
+            with handlerClass((dictValues['host'], dictValues['puerto']), MyUDPHandler) as server:
                 print('hello world from threading')
-                server_thread = threading.Thread(target=server.serve_forever())
-                server_thread.daemon = True
-                server_thread.start()
-    else:
-        print('Error de argumentos')
+                executeServer(dictValues['proceso'].lower(), server)
